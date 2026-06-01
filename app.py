@@ -1,425 +1,162 @@
-# ==========================================================
-# AI VIDEO PROMPT GENERATOR PRO
-#
-# Features:
-# - Gemini Prompt Generation
-# - Multiple Video Styles
-# - Prompt Review
-# - Prompt History
-# - Download Prompt
-# - Statistics Dashboard
-# - Professional UI
-# ==========================================================
-
 import streamlit as st
 import google.generativeai as genai
 
-# ==========================================================
-# PAGE CONFIG
-# ==========================================================
-
-st.set_page_config(
-    page_title="AI Video Prompt Generator Pro",
-    page_icon="🎬",
-    layout="wide"
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer
 )
 
-# ==========================================================
-# GEMINI CONFIGURATION
-# ==========================================================
+from reportlab.lib.styles import getSampleStyleSheet
 
-GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+from io import BytesIO
+from datetime import datetime
+import random
 
-genai.configure(api_key=GEMINI_API_KEY)
+# ==========================================
+# PAGE
+# ==========================================
+
+st.set_page_config(
+    page_title="AI Invoice Generator",
+    page_icon="🧾"
+)
+
+# ==========================================
+# GEMINI
+# ==========================================
+
+genai.configure(
+    api_key=st.secrets["GEMINI_API_KEY"]
+)
 
 model = genai.GenerativeModel(
     "gemini-2.5-flash"
 )
 
-# ==========================================================
-# SESSION STATE
-# ==========================================================
+# ==========================================
+# PDF FUNCTION
+# ==========================================
 
-if "video_prompt" not in st.session_state:
-    st.session_state.video_prompt = ""
+def create_pdf(text):
 
-if "prompt_review" not in st.session_state:
-    st.session_state.prompt_review = ""
+    buffer = BytesIO()
 
-if "prompt_history" not in st.session_state:
-    st.session_state.prompt_history = []
+    doc = SimpleDocTemplate(buffer)
 
-# ==========================================================
-# SIDEBAR
-# ==========================================================
+    styles = getSampleStyleSheet()
 
-with st.sidebar:
+    story = []
 
-    st.title("🎬 Video Prompt Pro")
+    for line in text.split("\n"):
 
-    st.markdown("---")
+        if line.strip():
 
-    st.subheader("⚙ Generation Settings")
+            story.append(
+                Paragraph(
+                    line,
+                    styles["BodyText"]
+                )
+            )
 
-    duration = st.selectbox(
-        "Video Duration",
-        [
-            "5 Seconds",
-            "10 Seconds",
-            "15 Seconds",
-            "30 Seconds"
-        ]
-    )
+            story.append(
+                Spacer(1,5)
+            )
 
-    quality = st.selectbox(
-        "Video Quality",
-        [
-            "Standard",
-            "HD",
-            "Ultra HD",
-            "4K"
-        ]
-    )
+    doc.build(story)
 
-    video_style = st.selectbox(
-        "Video Style",
-        [
-            "Cinematic",
-            "Realistic",
-            "Anime",
-            "Cyberpunk",
-            "Documentary",
-            "Advertisement"
-        ]
-    )
+    pdf = buffer.getvalue()
 
-    st.markdown("---")
+    buffer.close()
 
-    st.subheader("📊 Statistics")
+    return pdf
 
-    st.metric(
-        "Prompts Generated",
-        len(st.session_state.prompt_history)
-    )
+# ==========================================
+# UI
+# ==========================================
 
-    if st.button(
-        "🗑 Clear History",
-        use_container_width=True
-    ):
+st.title("🧾 AI Invoice Generator")
 
-        st.session_state.prompt_history = []
+invoice_no = f"INV-{random.randint(1000,9999)}"
 
-        st.success(
-            "History Cleared"
-        )
-
-# ==========================================================
-# MAIN TITLE
-# ==========================================================
-
-st.title("🎬 AI Video Prompt Generator Pro")
-
-st.caption(
-    "Generate Professional AI Video Prompts Using Gemini"
+client_name = st.text_input(
+    "Client Name"
 )
 
-st.markdown("---")
-
-# ==========================================================
-# USER INPUT
-# ==========================================================
-
-st.header("📝 Video Idea")
-
-prompt = st.text_area(
-    "Describe your video idea",
-    height=150,
-    placeholder="""
-Example:
-
-A futuristic AI classroom where students learn
-using holographic displays and intelligent
-virtual assistants.
-"""
+company = st.text_input(
+    "Company"
 )
 
-# ==========================================================
-# BUTTONS
-# ==========================================================
+service = st.text_area(
+    "Service Description"
+)
 
-col1, col2 = st.columns(2)
+amount = st.number_input(
+    "Amount",
+    min_value=0.0
+)
 
-with col1:
+tax = st.number_input(
+    "Tax %",
+    min_value=0.0
+)
 
-    generate_button = st.button(
-        "🎥 Generate Prompt",
-        use_container_width=True
-    )
+generate = st.button(
+    "Generate Invoice"
+)
 
-with col2:
+# ==========================================
+# GENERATE
+# ==========================================
 
-    review_button = st.button(
-        "⭐ Review Prompt",
-        use_container_width=True
-    )
+if generate:
 
-# ==========================================================
-# GENERATE PROMPT
-# ==========================================================
+    prompt = f"""
+Create a professional invoice.
 
-if generate_button:
+Invoice Number:
+{invoice_no}
 
-    if not prompt.strip():
+Date:
+{datetime.now().strftime('%d-%m-%Y')}
 
-        st.warning(
-            "Please enter a video idea."
-        )
+Client:
+{client_name}
 
-    else:
+Company:
+{company}
 
-        # ==================================================
-        # STYLE INSTRUCTIONS
-        # ==================================================
+Service:
+{service}
 
-        if video_style == "Cinematic":
+Amount:
+{amount}
 
-            style_instruction = """
-Use:
-- cinematic lighting
-- dramatic atmosphere
-- Hollywood visuals
-- dynamic camera movement
-- movie quality
-"""
-
-        elif video_style == "Realistic":
-
-            style_instruction = """
-Use:
-- photorealistic visuals
-- realistic motion
-- natural lighting
-- real-world detail
-"""
-
-        elif video_style == "Anime":
-
-            style_instruction = """
-Use:
-- anime style visuals
-- vibrant colors
-- smooth animation
-- expressive characters
-"""
-
-        elif video_style == "Cyberpunk":
-
-            style_instruction = """
-Use:
-- neon lighting
-- futuristic cityscapes
-- cyberpunk atmosphere
-- high-tech environments
-"""
-
-        elif video_style == "Documentary":
-
-            style_instruction = """
-Use:
-- educational storytelling
-- realistic camera work
-- informative visuals
-- documentary tone
-"""
-
-        else:
-
-            style_instruction = """
-Use:
-- commercial quality visuals
-- marketing language
-- product showcase style
-- engaging presentation
-"""
-
-        with st.spinner(
-            "Generating Professional Video Prompt..."
-        ):
-
-            try:
-
-                video_prompt_request = f"""
-You are an expert AI video prompt engineer.
-
-User Idea:
-{prompt}
-
-Duration:
-{duration}
-
-Quality:
-{quality}
-
-Video Style:
-{video_style}
-
-Style Instructions:
-{style_instruction}
-
-Create a professional text-to-video prompt.
+Tax:
+{tax}%
 
 Include:
+- Subtotal
+- Tax Amount
+- Total Amount
+- Payment Notes
 
-1. Environment
-2. Subject Description
-3. Lighting
-4. Camera Movement
-5. Visual Style
-6. Motion Details
-7. Rendering Quality
-
-Return ONLY the final optimized prompt.
+Return only invoice content.
 """
 
-                response = model.generate_content(
-                    video_prompt_request,
-                    generation_config={
-                        "temperature": 0.7
-                    }
-                )
-
-                st.session_state.video_prompt = (
-                    response.text
-                )
-
-                st.session_state.prompt_history.append(
-                    {
-                        "style": video_style,
-                        "prompt": response.text
-                    }
-                )
-
-                st.success(
-                    "Prompt Generated Successfully!"
-                )
-
-            except Exception as e:
-
-                st.error(
-                    f"Error: {e}"
-                )
-
-# ==========================================================
-# REVIEW PROMPT
-# ==========================================================
-
-if review_button:
-
-    if not st.session_state.video_prompt:
-
-        st.warning(
-            "Generate a prompt first."
-        )
-
-    else:
-
-        with st.spinner(
-            "Reviewing Prompt..."
-        ):
-
-            try:
-
-                review_request = f"""
-Review this AI video prompt.
-
-Provide:
-
-1. Quality Score (0-100)
-2. Strengths
-3. Weaknesses
-4. Suggestions
-5. Professional Rating
-
-Prompt:
-
-{st.session_state.video_prompt}
-"""
-
-                review_response = model.generate_content(
-                    review_request
-                )
-
-                st.session_state.prompt_review = (
-                    review_response.text
-                )
-
-            except Exception as e:
-
-                st.error(
-                    f"Review Error: {e}"
-                )
-
-# ==========================================================
-# DISPLAY GENERATED PROMPT
-# ==========================================================
-
-if st.session_state.video_prompt:
-
-    st.markdown("---")
-
-    st.subheader(
-        "🎬 Generated Video Prompt"
+    response = model.generate_content(
+        prompt
     )
 
-    st.code(
-        st.session_state.video_prompt,
-        language="text"
-    )
+    invoice = response.text
+
+    st.markdown(invoice)
+
+    pdf = create_pdf(invoice)
 
     st.download_button(
-        label="📥 Download Prompt",
-        data=st.session_state.video_prompt,
-        file_name="video_prompt.txt",
-        mime="text/plain",
-        use_container_width=True
+        "📄 Download Invoice PDF",
+        data=pdf,
+        file_name="invoice.pdf",
+        mime="application/pdf"
     )
-
-# ==========================================================
-# DISPLAY REVIEW
-# ==========================================================
-
-if st.session_state.prompt_review:
-
-    st.markdown("---")
-
-    with st.expander(
-        "⭐ Prompt Review Report"
-    ):
-
-        st.markdown(
-            st.session_state.prompt_review
-        )
-
-# ==========================================================
-# PROMPT HISTORY
-# ==========================================================
-
-if st.session_state.prompt_history:
-
-    st.markdown("---")
-
-    st.subheader(
-        "📜 Prompt History"
-    )
-
-    for item in reversed(
-        st.session_state.prompt_history
-    ):
-
-        with st.expander(
-            f"🎨 {item['style']}"
-        ):
-
-            st.write(
-                item["prompt"]
-            )
